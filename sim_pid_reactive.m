@@ -1,0 +1,48 @@
+function [t, y] = sim_pid_reactive()
+% =========================================================================
+%
+% PID TUNING: Kp=20 (stiffness), Kd=5 (damping), Ki=10 (zero SS error).
+%
+% DISTURBANCE REJECTION TF (not reference tracking):
+%   Td(s) = G/(1+C*G) = s / (s^3 + 8s^2 + 22s + 10)
+%
+% Derivation:
+%   G = 1/(s^2+3s+2), C = (5s^2+20s+10)/s
+%   C*G = (5s^2+20s+10)/(s^3+3s^2+2s)
+%   1+C*G = (s^3+8s^2+22s+10)/(s^3+3s^2+2s)
+%   Td = G/(1+C*G) = s/(s^3+8s^2+22s+10)
+%
+% STATE-SPACE (controllable canonical form):
+%   A = [0 1 0; 0 0 1; - -22 -8], B = [0;0;1]
+%   C_out = [0 1 0], D = 0
+% =========================================================================
+
+
+A     = [0 1 0; 0 0 1; -172 -222 -93];
+B     = [0; 0; 1];
+C_out = [0 1 0];
+
+
+dt = 0.01;
+t  = (0:dt:10)';
+N  = length(t);
+
+
+u = zeros(N, 1);
+u(t >= 2) = 3;
+
+
+x = zeros(3, 1);
+y = zeros(N, 1);
+for k = 1:N
+    y(k) = C_out * x;
+    if k < N
+        uk = u(k);
+        k1 = A*x + B*uk;
+        k2 = A*(x + dt/2*k1) + B*uk;
+        k3 = A*(x + dt/2*k2) + B*uk;
+        k4 = A*(x + dt*k3)   + B*uk;
+        x  = x + (dt/6)*(k1 + 2*k2 + 2*k3 + k4);
+    end
+end
+end
